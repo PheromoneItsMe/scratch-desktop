@@ -257,24 +257,40 @@ ${JSON.stringify(sceneContext.targets, null, 2)}
                 parts: [{text: text}]
             });
 
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    systemInstruction: {
-                        parts: [{text: systemPrompt}]
-                    },
-                    contents: historyContents
-                })
-            });
+            const candidateModels = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+            let replyText = null;
+            let lastError = null;
 
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+            for (const model of candidateModels) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            systemInstruction: {
+                                parts: [{text: systemPrompt}]
+                            },
+                            contents: historyContents
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (replyText) break;
+                } catch (err) {
+                    lastError = err;
+                    console.warn(`[Scratch AI Studio] Model ${model} failed, trying fallback:`, err.message);
+                }
             }
 
-            const data = await res.json();
-            const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Готово!';
+            if (!replyText) {
+                throw lastError || new Error('Не удалось получить ответ от моделей Gemini');
+            }
 
             // Process and execute actions on the live Scratch scene
             const executedActions = await this.executeEmbeddedActions(replyText);
@@ -732,7 +748,7 @@ ${JSON.stringify(sceneContext.targets, null, 2)}
                             <span style={{fontSize: '1.2rem'}}>✨</span>
                             <div>
                                 <div style={{fontWeight: 700, fontSize: '0.96rem'}}>ИИ Ко-пилот сцены</div>
-                                <div style={{fontSize: '0.72rem', color: '#818cf8'}}>Gemini 2.0 Flash • Живое управление</div>
+                                <div style={{fontSize: '0.72rem', color: '#818cf8'}}>Gemini 3.8 Flash • Живое управление</div>
                             </div>
                         </div>
                         <button
