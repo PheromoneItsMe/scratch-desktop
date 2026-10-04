@@ -9,7 +9,15 @@ const merge = require('webpack-merge');
 
 const isProduction = (process.env.NODE_ENV === 'production');
 
-const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
+let electronVersion = '42.11.10';
+try {
+    const pkg = require('./package.json');
+    if (pkg.devDependencies && pkg.devDependencies.electron) {
+        electronVersion = pkg.devDependencies.electron.replace(/^[^0-9]*/, '');
+    }
+} catch (e) {
+    // fallback
+}
 console.log(`Targeting Electron ${electronVersion}`);
 
 const makeConfig = function (defaultConfig, options) {

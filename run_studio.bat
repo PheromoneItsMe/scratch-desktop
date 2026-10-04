@@ -2,4 +2,4 @@
 title Scratch AI Studio
 cd /d "%~dp0"
 set USE_LOCAL_FILES=1
-"C:\Program Files\nodejs\node.exe" "%~dp0node_modules\electron\cli.js" "%~dp0." %*
+start "" "%~dp0node_modules\electron\dist\electron.exe" "%~dp0." %*

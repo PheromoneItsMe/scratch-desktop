@@ -442,12 +442,6 @@ app.on('will-quit', () => {
     telemetry.appWillClose();
 });
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
-
-if (!gotSingleInstanceLock) {
-    log.info('[Scratch AI Studio] Another instance is already running; passing focus to active window and exiting.');
-    app.quit();
-} else {
     app.on('second-instance', () => {
         if (_windows.main) {
             if (_windows.main.isMinimized()) _windows.main.restore();
@@ -508,7 +502,6 @@ if (!gotSingleInstanceLock) {
 
         _windows.usb = createUsbWindow();
     });
-}
 
 ipcMain.on('open-about-window', () => {
     _windows.about.show();
