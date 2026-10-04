@@ -221,10 +221,34 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
         }
     });
 
-    server.listen(port, '127.0.0.1', () => {
-        log.info(`[Scratch AI Studio] Live Bridge running on http://127.0.0.1:${port}`);
+    server.on('error', err => {
+        if (err.code === 'EADDRINUSE') {
+            log.warn(`[Scratch AI Studio] Live Bridge port ${port} is already in use. Secondary instance running smoothly without duplicate bridge server.`);
+            try {
+                server.close();
+            } catch (_) {}
+        } else {
+            log.error('[Scratch AI Studio] Live Bridge server error:', err);
+        }
     });
+
+    try {
+        server.listen(port, '127.0.0.1', () => {
+            log.info(`[Scratch AI Studio] Live Bridge running on http://127.0.0.1:${port}`);
+        });
+    } catch (err) {
+        log.warn('[Scratch AI Studio] Bridge listen attempt threw:', err);
+    }
 
     currentServer = server;
     return server;
+};
+
+export const closeStudioBridge = () => {
+    if (currentServer) {
+        try {
+            currentServer.close();
+        } catch (_) {}
+        currentServer = null;
+    }
 };

@@ -10,7 +10,11 @@ import telemetry from './ScratchDesktopTelemetry';
 import MacOSMenu from './MacOSMenu';
 import log from '../common/log.js';
 import packageJson from '../../package.json';
-import {initStudioBridge} from './studioBridge.js';
+import {initStudioBridge, closeStudioBridge} from './studioBridge.js';
+
+process.on('uncaughtException', err => {
+    log.error('[Scratch AI Studio] Handled Uncaught Exception:', err);
+});
 
 telemetry.appWasOpened();
 
@@ -428,60 +432,77 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+    closeStudioBridge();
     telemetry.appWillClose();
 });
 
-// work around https://github.com/MarshallOfSound/electron-devtools-installer/issues/122
-// which seems to be a result of https://github.com/electron/electron/issues/19468
-if (process.platform === 'win32') {
-    const appUserDataPath = app.getPath('userData');
-    const devToolsExtensionsPath = path.join(appUserDataPath, 'DevTools Extensions');
-    try {
-        fs.unlinkSync(devToolsExtensionsPath);
-    } catch {
-        // don't complain if the file doesn't exist
-    }
-}
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
-// create main BrowserWindow when electron is ready
-app.on('ready', () => {
-    if (isDevelopment) {
-        import('electron-devtools-installer').then(importedModule => {
-            // v4 publishes `installExtension` as a named export; v3 published
-            // it as the default export. Use the named export.
-            const {installExtension, REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS} = importedModule;
-            const extensionsToInstall = [REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS];
-            for (const extension of extensionsToInstall) {
-                // WARNING: depending on a lot of things including the version of Electron `installExtension` might
-                // return a promise that never resolves, especially if the extension is already installed.
-                installExtension(extension).then(
-                    // v3 resolved with a string name; v4 resolves with an Electron
-                    // Extension object. Read `.name` rather than relying on toString.
-                    installed => log(`Installed dev extension: ${installed.name}`),
-                    errorMessage => log.error(`Error installing dev extension: ${errorMessage}`)
-                );
-            }
+if (!gotSingleInstanceLock) {
+    log.info('[Scratch AI Studio] Another instance is already running; passing focus to active window and exiting.');
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (_windows.main) {
+            if (_windows.main.isMinimized()) _windows.main.restore();
+            _windows.main.show();
+            _windows.main.focus();
+        }
+    });
+
+    // work around https://github.com/MarshallOfSound/electron-devtools-installer/issues/122
+    // which seems to be a result of https://github.com/electron/electron/issues/19468
+    if (process.platform === 'win32') {
+        const appUserDataPath = app.getPath('userData');
+        const devToolsExtensionsPath = path.join(appUserDataPath, 'DevTools Extensions');
+        try {
+            fs.unlinkSync(devToolsExtensionsPath);
+        } catch {
+            // don't complain if the file doesn't exist
+        }
+    }
+
+    // create main BrowserWindow when electron is ready
+    app.on('ready', () => {
+        if (isDevelopment) {
+            import('electron-devtools-installer').then(importedModule => {
+                // v4 publishes `installExtension` as a named export; v3 published
+                // it as the default export. Use the named export.
+                const {installExtension, REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS} = importedModule;
+                const extensionsToInstall = [REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS];
+                for (const extension of extensionsToInstall) {
+                    // WARNING: depending on a lot of things including the version of Electron `installExtension` might
+                    // return a promise that never resolves, especially if the extension is already installed.
+                    installExtension(extension).then(
+                        // v3 resolved with a string name; v4 resolves with an Electron
+                        // Extension object. Read `.name` rather than relying on toString.
+                        installed => log(`Installed dev extension: ${installed.name}`),
+                        errorMessage => log.error(`Error installing dev extension: ${errorMessage}`)
+                    );
+                }
+            });
+        }
+
+        _windows.main = createMainWindow();
+        initStudioBridge(_windows.main);
+        _windows.main.on('closed', () => {
+            closeStudioBridge();
+            delete _windows.main;
         });
-    }
+        _windows.about = createAboutWindow();
+        _windows.about.on('close', event => {
+            event.preventDefault();
+            _windows.about.hide();
+        });
+        _windows.privacy = createPrivacyWindow();
+        _windows.privacy.on('close', event => {
+            event.preventDefault();
+            _windows.privacy.hide();
+        });
 
-    _windows.main = createMainWindow();
-    initStudioBridge(_windows.main);
-    _windows.main.on('closed', () => {
-        delete _windows.main;
+        _windows.usb = createUsbWindow();
     });
-    _windows.about = createAboutWindow();
-    _windows.about.on('close', event => {
-        event.preventDefault();
-        _windows.about.hide();
-    });
-    _windows.privacy = createPrivacyWindow();
-    _windows.privacy.on('close', event => {
-        event.preventDefault();
-        _windows.privacy.hide();
-    });
-
-    _windows.usb = createUsbWindow();
-});
+}
 
 ipcMain.on('open-about-window', () => {
     _windows.about.show();
