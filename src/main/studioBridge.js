@@ -213,6 +213,30 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
                 });
             }
 
+            // Reload renderer window
+            if (pathname === '/api/reload' && req.method === 'POST') {
+                if (!activeWindow || activeWindow.isDestroyed()) {
+                    return sendJsonResponse(res, 503, {error: 'Active window not ready'});
+                }
+                activeWindow.webContents.reload();
+                return sendJsonResponse(res, 200, {status: 'ok', message: 'Window reloaded'});
+            }
+
+            // Execute JS in renderer
+            if (pathname === '/api/eval' && req.method === 'POST') {
+                if (!activeWindow || activeWindow.isDestroyed()) {
+                    return sendJsonResponse(res, 503, {error: 'Active window not ready'});
+                }
+                const body = await readRequestBody(req);
+                const code = body.code || '';
+                try {
+                    const evalResult = await activeWindow.webContents.executeJavaScript(code);
+                    return sendJsonResponse(res, 200, {status: 'ok', result: evalResult});
+                } catch (evalErr) {
+                    return sendJsonResponse(res, 500, {error: evalErr.message});
+                }
+            }
+
             // 404 fallback
             return sendJsonResponse(res, 404, {error: 'Route not found'});
         } catch (e) {

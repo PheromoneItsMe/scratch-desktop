@@ -86,10 +86,23 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             // Live Bridge IPC: Load project
             this.handleStudioLoadProject = (_event, projectData) => {
                 if (this.props.vm) {
+                    this.props.onLoadingStarted();
                     const dataToLoad = (typeof projectData === 'string') ? projectData : JSON.stringify(projectData);
                     this.props.vm.loadProject(dataToLoad).then(() => {
+                        this.props.onLoadingCompleted();
+                        this.props.onLoadedProject(this.props.loadingState, true);
+                        if (this.props.vm.runtime && this.props.vm.runtime.targets.length > 0) {
+                            const firstSprite = this.props.vm.runtime.targets.find(t => !t.isStage) || this.props.vm.runtime.targets[0];
+                            if (firstSprite) {
+                                this.props.vm.setEditingTarget(firstSprite.id);
+                            }
+                            this.props.vm.emitTargetsUpdate();
+                            this.props.vm.emitWorkspaceUpdate();
+                        }
                         console.log('[Scratch AI Studio] Live project loaded into VM');
                     }).catch(err => {
+                        this.props.onLoadingCompleted();
+                        this.props.onLoadedProject(this.props.loadingState, false);
                         console.error('[Scratch AI Studio] Error loading live project:', err);
                     });
                 }
@@ -99,9 +112,22 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             // Live Bridge IPC: Load project buffer (sb3 zip)
             this.handleStudioLoadProjectBuffer = (_event, projectBuffer) => {
                 if (this.props.vm) {
+                    this.props.onLoadingStarted();
                     this.props.vm.loadProject(projectBuffer).then(() => {
+                        this.props.onLoadingCompleted();
+                        this.props.onLoadedProject(this.props.loadingState, true);
+                        if (this.props.vm.runtime && this.props.vm.runtime.targets.length > 0) {
+                            const firstSprite = this.props.vm.runtime.targets.find(t => !t.isStage) || this.props.vm.runtime.targets[0];
+                            if (firstSprite) {
+                                this.props.vm.setEditingTarget(firstSprite.id);
+                            }
+                            this.props.vm.emitTargetsUpdate();
+                            this.props.vm.emitWorkspaceUpdate();
+                        }
                         console.log('[Scratch AI Studio] Live project buffer loaded into VM');
                     }).catch(err => {
+                        this.props.onLoadingCompleted();
+                        this.props.onLoadedProject(this.props.loadingState, false);
                         console.error('[Scratch AI Studio] Error loading live project buffer:', err);
                     });
                 }
