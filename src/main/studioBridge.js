@@ -179,6 +179,18 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
                     return sendJsonResponse(res, 503, {error: 'Active window not ready'});
                 }
                 const body = await readRequestBody(req);
+                if (body.filePath) {
+                    try {
+                        const fileBuf = fs.readFileSync(body.filePath);
+                        activeWindow.webContents.send('studio:loadProjectBuffer', fileBuf);
+                        return sendJsonResponse(res, 200, {
+                            status: 'success',
+                            message: `Project file ${body.filePath} dispatched to live runtime`
+                        });
+                    } catch (readErr) {
+                        return sendJsonResponse(res, 400, {error: `Failed to read file: ${readErr.message}`});
+                    }
+                }
                 const projectData = body.project || body;
                 activeWindow.webContents.send('studio:loadProject', projectData);
                 return sendJsonResponse(res, 200, {

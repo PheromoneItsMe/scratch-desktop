@@ -96,6 +96,18 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             };
             ipcRenderer.on('studio:loadProject', this.handleStudioLoadProject);
 
+            // Live Bridge IPC: Load project buffer (sb3 zip)
+            this.handleStudioLoadProjectBuffer = (_event, projectBuffer) => {
+                if (this.props.vm) {
+                    this.props.vm.loadProject(projectBuffer).then(() => {
+                        console.log('[Scratch AI Studio] Live project buffer loaded into VM');
+                    }).catch(err => {
+                        console.error('[Scratch AI Studio] Error loading live project buffer:', err);
+                    });
+                }
+            };
+            ipcRenderer.on('studio:loadProjectBuffer', this.handleStudioLoadProjectBuffer);
+
             // Live Bridge IPC: Add sprite
             this.handleStudioAddSprite = (_event, spriteData) => {
                 if (this.props.vm) {
@@ -162,6 +174,7 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         componentWillUnmount () {
             ipcRenderer.removeListener('setTitleFromSave', this.handleSetTitleFromSave);
             ipcRenderer.removeListener('studio:loadProject', this.handleStudioLoadProject);
+            ipcRenderer.removeListener('studio:loadProjectBuffer', this.handleStudioLoadProjectBuffer);
             ipcRenderer.removeListener('studio:addSprite', this.handleStudioAddSprite);
             ipcRenderer.removeListener('studio:getState', this.handleStudioGetState);
             ipcRenderer.removeListener('studio:getProject', this.handleStudioGetProject);
