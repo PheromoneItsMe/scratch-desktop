@@ -67,5 +67,18 @@ def open_generator():
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    status = check_health()
-    print("Bridge status:", json.dumps(status, indent=2, ensure_ascii=False))
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1].lower()
+        if cmd == "screenshot":
+            out_file = sys.argv[2] if len(sys.argv) > 2 else "screenshot.png"
+            res = capture_screenshot(out_file)
+            print(json.dumps(res, indent=2, ensure_ascii=False))
+        elif cmd == "state":
+            print(json.dumps(get_state(), indent=2, ensure_ascii=False))
+        elif cmd == "open":
+            print(json.dumps(open_generator(), indent=2, ensure_ascii=False))
+        else:
+            print("Unknown command:", cmd)
+    else:
+        status = check_health()
+        print("Bridge status:", json.dumps(status, indent=2, ensure_ascii=False))

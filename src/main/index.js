@@ -83,10 +83,15 @@ const displayPermissionDeniedWarning = (browserWindow, permissionType) => {
  * @returns {string} - an absolute URL as a string
  */
 const makeFullUrl = (url, search = null) => {
-    const baseUrl = (isDevelopment && !process.env.USE_LOCAL_FILES ?
-        `http://localhost:${PORT}/` :
-        `file://${path.join(__dirname, '../renderer')}/`
-    );
+    const localRendererPath = path.join(__dirname, '../renderer');
+    const localHtmlPath = path.join(localRendererPath, 'index.html');
+    const useLocal = process.env.USE_LOCAL_FILES === '1' ||
+        (!process.env.USE_DEV_SERVER && fs.existsSync(localHtmlPath));
+
+    const baseUrl = useLocal ?
+        `file://${localRendererPath}/` :
+        `http://localhost:${PORT}/`;
+
     const fullUrl = new URL(url, baseUrl);
     if (search) {
         fullUrl.search = search; // automatically percent-encodes anything that needs it
@@ -169,10 +174,10 @@ const handlePermissionRequest = async (webContents, permission, callback, detail
 // in-renderer `window.open` can launch.
 const ALLOWED_EXTERNAL_PROTOCOLS = ['http:', 'https:', 'mailto:'];
 
-const createWindow = ({search = null, url = 'index.html', ...browserWindowOptions}) => {
+const createWindow = ({search = null, url = 'index.html', show = true, ...browserWindowOptions}) => {
     const window = new BrowserWindow({
         useContentSize: true,
-        show: false,
+        show: show,
         webPreferences: {
             contextIsolation: false,
             nodeIntegration: true
@@ -214,6 +219,10 @@ const createWindow = ({search = null, url = 'index.html', ...browserWindowOption
     window.loadURL(fullUrl);
     window.once('ready-to-show', () => {
         webContents.send('ready-to-show');
+        if (show) {
+            window.show();
+            window.focus();
+        }
     });
 
     return window;
@@ -223,6 +232,7 @@ const createAboutWindow = () => {
     const window = createWindow({
         width: 400,
         height: 400,
+        show: false,
         parent: _windows.main,
         search: 'route=about',
         title: `About ${packageJson.productName}`
@@ -234,6 +244,7 @@ const createPrivacyWindow = () => {
     const window = createWindow({
         width: _windows.main.width * 0.8,
         height: _windows.main.height * 0.8,
+        show: false,
         parent: _windows.main,
         search: 'route=privacy',
         title: `${packageJson.productName} Privacy Policy`
@@ -245,6 +256,7 @@ const createUsbWindow = () => {
     const window = createWindow({
         width: 400,
         height: 300,
+        show: false,
         parent: _windows.main,
         search: 'route=usb',
         modal: true,
@@ -389,7 +401,15 @@ const createMainWindow = () => {
 
     window.once('ready-to-show', () => {
         window.show();
+        window.focus();
     });
+
+    setTimeout(() => {
+        if (window && !window.isDestroyed() && !window.isVisible()) {
+            window.show();
+            window.focus();
+        }
+    }, 500);
 
     return window;
 };

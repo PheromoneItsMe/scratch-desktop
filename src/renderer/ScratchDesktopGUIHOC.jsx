@@ -22,7 +22,8 @@ import {
 import ElectronStorageHelper from '../common/ElectronStorageHelper';
 
 import showPrivacyPolicy from './showPrivacyPolicy';
-import AIGeneratorModal from './AIGeneratorModal.jsx';
+import AICopilotSidebar from './AICopilotSidebar.jsx';
+import {generatePlatformerProject} from './levelGenerator.js';
 
 /**
  * Higher-order component to add desktop logic to the GUI.
@@ -38,10 +39,10 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                 'handleSetTitleFromSave',
                 'handleStorageInit',
                 'handleUpdateProjectTitle',
-                'toggleGenerator'
+                'toggleSidebar'
             ]);
             this.state = {
-                isGeneratorOpen: false,
+                isSidebarOpen: false,
                 projectTitle: ''
             };
             this.props.onLoadingStarted();
@@ -142,12 +143,31 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             };
             ipcRenderer.on('studio:getProject', this.handleStudioGetProject);
 
-            // Live Bridge IPC: Open generator modal
+            // Live Bridge IPC: Open co-pilot sidebar
             this.handleStudioOpenGenerator = () => {
                 console.log('[Scratch AI Studio] Received studio:openGenerator IPC!');
-                this.setState({isGeneratorOpen: true});
+                this.setState({isSidebarOpen: true});
             };
             ipcRenderer.on('studio:openGenerator', this.handleStudioOpenGenerator);
+
+            // In-app Level Generator event
+            this.handleStudioLevelGenerated = event => {
+                const spec = event.detail || {};
+                console.log('[Scratch AI Studio] Received studio:level-generated event:', spec);
+                if (this.props.vm) {
+                    try {
+                        const project = generatePlatformerProject(spec);
+                        this.props.vm.loadProject(JSON.stringify(project)).then(() => {
+                            console.log('[Scratch AI Studio] Generated platformer project loaded into VM');
+                        }).catch(err => {
+                            console.error('[Scratch AI Studio] Error loading generated project:', err);
+                        });
+                    } catch (e) {
+                        console.error('[Scratch AI Studio] Error generating platformer:', e);
+                    }
+                }
+            };
+            window.addEventListener('studio:level-generated', this.handleStudioLevelGenerated);
         }
         componentWillUnmount () {
             ipcRenderer.removeListener('setTitleFromSave', this.handleSetTitleFromSave);
@@ -156,13 +176,14 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             ipcRenderer.removeListener('studio:getState', this.handleStudioGetState);
             ipcRenderer.removeListener('studio:getProject', this.handleStudioGetProject);
             ipcRenderer.removeListener('studio:openGenerator', this.handleStudioOpenGenerator);
+            window.removeEventListener('studio:level-generated', this.handleStudioLevelGenerated);
         }
         handleClickAbout () {
             ipcRenderer.send('open-about-window');
         }
-        toggleGenerator () {
-            console.log('[Scratch AI Studio] toggleGenerator clicked, toggling modal');
-            this.setState(prevState => ({isGeneratorOpen: !prevState.isGeneratorOpen}));
+        toggleSidebar () {
+            console.log('[Scratch AI Studio] toggleSidebar called');
+            this.setState(prevState => ({isSidebarOpen: !prevState.isSidebarOpen}));
         }
         handleProjectTelemetryEvent (event, metadata) {
             ipcRenderer.send(event, metadata);
@@ -187,8 +208,8 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                         canSave={false}
                         onClickAbout={[
                             {
-                                title: '⚡ ИИ Генератор уровней',
-                                onClick: () => this.toggleGenerator()
+                                title: '⚡ ИИ Ко-пилот',
+                                onClick: () => this.toggleSidebar()
                             },
                             {
                                 title: 'About',
@@ -217,8 +238,8 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                     <div style={{position: 'fixed', top: '6px', right: '175px', zIndex: 9999}}>
                         <button
                             type="button"
-                            onClick={this.toggleGenerator}
-                            title="Открыть ИИ Генератор уровней"
+                            onClick={this.toggleSidebar}
+                            title="Открыть ИИ Ко-пилот сцены"
                             style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -234,14 +255,14 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                                 boxShadow: '0 2px 10px rgba(79, 70, 229, 0.5)'
                             }}
                         >
-                            <span>⚡</span> ИИ Генератор
+                            <span>⚡</span> ИИ Ко-пилот
                         </button>
                     </div>
 
-                    {/* Integrated AI Generator Modal */}
-                    <AIGeneratorModal
-                        isOpen={this.state.isGeneratorOpen}
-                        onClose={this.toggleGenerator}
+                    {/* Non-blocking Collapsible Right Sidebar */}
+                    <AICopilotSidebar
+                        isOpen={this.state.isSidebarOpen}
+                        onToggle={this.toggleSidebar}
                         vm={this.props.vm}
                     />
                 </React.Fragment>
