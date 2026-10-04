@@ -1,5 +1,10 @@
 @echo off
-cd /d "c:\Projects\Work\Scratch_AI_Studio"
+title Scratch AI Studio
+cd /d "%~dp0"
 set USE_LOCAL_FILES=1
-start "Scratch AI Studio" "C:\Program Files\nodejs\node.exe" "c:\Projects\Work\Scratch_AI_Studio\node_modules\electron\cli.js" "."
-exit
+set PATH=C:\Program Files\nodejs;%PATH%
+if "%~1"=="" (
+    start "" wscript.exe "%~dp0run_studio.vbs"
+) else (
+    "C:\Program Files\nodejs\node.exe" "%~dp0node_modules\electron\cli.js" "%~dp0." "%~1"
+)

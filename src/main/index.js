@@ -16,6 +16,10 @@ process.on('uncaughtException', err => {
     log.error('[Scratch AI Studio] Handled Uncaught Exception:', err);
 });
 
+if (process.env.USE_LOCAL_FILES === undefined) {
+    process.env.USE_LOCAL_FILES = '1';
+}
+
 telemetry.appWasOpened();
 
 // const defaultSize = {width: 1096, height: 715}; // minimum
@@ -179,9 +183,11 @@ const handlePermissionRequest = async (webContents, permission, callback, detail
 const ALLOWED_EXTERNAL_PROTOCOLS = ['http:', 'https:', 'mailto:'];
 
 const createWindow = ({search = null, url = 'index.html', show = true, ...browserWindowOptions}) => {
+    const appIcon = path.join(__dirname, '../../buildResources/ScratchDesktop.ico');
     const window = new BrowserWindow({
         useContentSize: true,
         show: show,
+        icon: fs.existsSync(appIcon) ? appIcon : path.join(__dirname, '../icon/ScratchDesktop.png'),
         webPreferences: {
             contextIsolation: false,
             nodeIntegration: true
@@ -522,7 +528,17 @@ const initialProjectDataPromise = (async () => {
         log.warn(`Expected 1 command line argument but received ${argv._.length}.`);
     }
     const projectPath = argv._[argv._.length - 1];
+    if (!projectPath || typeof projectPath !== 'string') {
+        return;
+    }
     try {
+        if (!fs.existsSync(projectPath)) {
+            return;
+        }
+        const stat = fs.statSync(projectPath);
+        if (stat.isDirectory()) {
+            return;
+        }
         const projectData = await promisify(fs.readFile)(projectPath, null);
         return projectData;
     } catch (e) {
