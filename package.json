@@ -1,8 +1,8 @@
 {
-  "name": "scratch-desktop",
-  "productName": "Scratch",
-  "description": "Scratch 3.0 as a self-contained desktop application",
-  "author": "Scratch Foundation",
+  "name": "scratch-ai-studio",
+  "productName": "Scratch AI Studio",
+  "description": "Scratch 3.0 desktop studio with real-time level generator",
+  "author": "Pheromone",
   "version": "3.32.0",
   "license": "AGPL-3.0-only",
   "main": "./dist/main/main.js",

@@ -10,6 +10,7 @@ import telemetry from './ScratchDesktopTelemetry';
 import MacOSMenu from './MacOSMenu';
 import log from '../common/log.js';
 import packageJson from '../../package.json';
+import {initStudioBridge} from './studioBridge.js';
 
 telemetry.appWasOpened();
 
@@ -441,6 +442,7 @@ app.on('ready', () => {
     }
 
     _windows.main = createMainWindow();
+    initStudioBridge(_windows.main);
     _windows.main.on('closed', () => {
         delete _windows.main;
     });

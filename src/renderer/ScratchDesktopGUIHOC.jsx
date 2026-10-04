@@ -22,6 +22,7 @@ import {
 import ElectronStorageHelper from '../common/ElectronStorageHelper';
 
 import showPrivacyPolicy from './showPrivacyPolicy';
+import AIGeneratorModal from './AIGeneratorModal.jsx';
 
 /**
  * Higher-order component to add desktop logic to the GUI.
@@ -36,8 +37,13 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                 'handleProjectTelemetryEvent',
                 'handleSetTitleFromSave',
                 'handleStorageInit',
-                'handleUpdateProjectTitle'
+                'handleUpdateProjectTitle',
+                'toggleGenerator'
             ]);
+            this.state = {
+                isGeneratorOpen: false,
+                projectTitle: ''
+            };
             this.props.onLoadingStarted();
             ipcRenderer.invoke('get-initial-project-data').then(initialProjectData => {
                 const hasInitialProject = initialProjectData && (initialProjectData.length > 0);
@@ -73,12 +79,81 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         }
         componentDidMount () {
             ipcRenderer.on('setTitleFromSave', this.handleSetTitleFromSave);
+
+            // Expose VM on window for developer console and extensions
+            if (typeof window !== 'undefined') {
+                window.scratchVM = this.props.vm;
+            }
+
+            // Live Bridge IPC: Load project
+            this.handleStudioLoadProject = (_event, projectData) => {
+                if (this.props.vm) {
+                    const dataToLoad = (typeof projectData === 'string') ? projectData : JSON.stringify(projectData);
+                    this.props.vm.loadProject(dataToLoad).then(() => {
+                        console.log('[Scratch AI Studio] Live project loaded into VM');
+                    }).catch(err => {
+                        console.error('[Scratch AI Studio] Error loading live project:', err);
+                    });
+                }
+            };
+            ipcRenderer.on('studio:loadProject', this.handleStudioLoadProject);
+
+            // Live Bridge IPC: Add sprite
+            this.handleStudioAddSprite = (_event, spriteData) => {
+                if (this.props.vm) {
+                    const dataToAdd = (typeof spriteData === 'string') ? spriteData : JSON.stringify(spriteData);
+                    this.props.vm.addSprite(dataToAdd).then(() => {
+                        console.log('[Scratch AI Studio] Live sprite added to VM');
+                    }).catch(err => {
+                        console.error('[Scratch AI Studio] Error adding live sprite:', err);
+                    });
+                }
+            };
+            ipcRenderer.on('studio:addSprite', this.handleStudioAddSprite);
+
+            // Live Bridge IPC: Query state
+            this.handleStudioGetState = (_event, reqId) => {
+                if (this.props.vm && this.props.vm.runtime) {
+                    const targets = this.props.vm.runtime.targets.map(t => ({
+                        id: t.id,
+                        name: t.getName(),
+                        isStage: t.isStage,
+                        x: t.x,
+                        y: t.y,
+                        visible: t.visible,
+                        direction: t.direction,
+                        currentCostume: t.currentCostume
+                    }));
+                    ipcRenderer.send('studio:stateResponse', {reqId, targets});
+                }
+            };
+            ipcRenderer.on('studio:getState', this.handleStudioGetState);
+
+            // Live Bridge IPC: Query project
+            this.handleStudioGetProject = (_event, reqId) => {
+                if (this.props.vm) {
+                    try {
+                        const jsonStr = this.props.vm.toJSON();
+                        ipcRenderer.send('studio:projectResponse', {reqId, project: JSON.parse(jsonStr)});
+                    } catch (e) {
+                        ipcRenderer.send('studio:projectResponse', {reqId, project: null});
+                    }
+                }
+            };
+            ipcRenderer.on('studio:getProject', this.handleStudioGetProject);
         }
         componentWillUnmount () {
             ipcRenderer.removeListener('setTitleFromSave', this.handleSetTitleFromSave);
+            ipcRenderer.removeListener('studio:loadProject', this.handleStudioLoadProject);
+            ipcRenderer.removeListener('studio:addSprite', this.handleStudioAddSprite);
+            ipcRenderer.removeListener('studio:getState', this.handleStudioGetState);
+            ipcRenderer.removeListener('studio:getProject', this.handleStudioGetProject);
         }
         handleClickAbout () {
             ipcRenderer.send('open-about-window');
+        }
+        toggleGenerator () {
+            this.setState(prevState => ({isGeneratorOpen: !prevState.isGeneratorOpen}));
         }
         handleProjectTelemetryEvent (event, metadata) {
             ipcRenderer.send(event, metadata);
@@ -95,33 +170,60 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         render () {
             const childProps = omit(this.props, Object.keys(ScratchDesktopGUIComponent.propTypes));
 
-            return (<WrappedComponent
-                canEditTitle
-                canModifyCloudData={false}
-                canSave={false}
-                onClickAbout={[
-                    {
-                        title: 'About',
-                        onClick: () => this.handleClickAbout()
-                    },
-                    {
-                        title: 'Privacy Policy',
-                        onClick: () => showPrivacyPolicy()
-                    },
-                    {
-                        title: 'Data Settings',
-                        onClick: () => this.props.onTelemetrySettingsClicked()
-                    }
-                ]}
-                onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
-                onShowPrivacyPolicy={showPrivacyPolicy}
-                onStorageInit={this.handleStorageInit}
-                onUpdateProjectTitle={this.handleUpdateProjectTitle}
-                platform="DESKTOP"
+            return (
+                <React.Fragment>
+                    <WrappedComponent
+                        canEditTitle
+                        canModifyCloudData={false}
+                        canSave={false}
+                        onClickAbout={[
+                            {
+                                title: '⚡ ИИ Генератор уровней',
+                                onClick: () => this.toggleGenerator()
+                            },
+                            {
+                                title: 'About',
+                                onClick: () => this.handleClickAbout()
+                            },
+                            {
+                                title: 'Privacy Policy',
+                                onClick: () => showPrivacyPolicy()
+                            },
+                            {
+                                title: 'Data Settings',
+                                onClick: () => this.props.onTelemetrySettingsClicked()
+                            }
+                        ]}
+                        onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
+                        onShowPrivacyPolicy={showPrivacyPolicy}
+                        onStorageInit={this.handleStorageInit}
+                        onUpdateProjectTitle={this.handleUpdateProjectTitle}
+                        platform="DESKTOP"
 
-                // allow passed-in props to override any of the above
-                {...childProps}
-            />);
+                        // allow passed-in props to override any of the above
+                        {...childProps}
+                    />
+
+                    {/* Sleek Floating Launcher Button in Header */}
+                    <div style={{position: 'fixed', top: '6px', right: '175px', zIndex: 9999}}>
+                        <button
+                            type="button"
+                            className="ai-studio-launcher-btn"
+                            onClick={this.toggleGenerator}
+                            title="Открыть ИИ Генератор уровней"
+                        >
+                            <span>⚡</span> ИИ Генератор
+                        </button>
+                    </div>
+
+                    {/* Integrated AI Generator Modal */}
+                    <AIGeneratorModal
+                        isOpen={this.state.isGeneratorOpen}
+                        onClose={this.toggleGenerator}
+                        vm={this.props.vm}
+                    />
+                </React.Fragment>
+            );
         }
     }
 
