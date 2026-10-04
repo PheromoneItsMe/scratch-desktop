@@ -201,18 +201,6 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
                 });
             }
 
-            // Open AI generator modal in GUI
-            if (pathname === '/api/open-generator' && req.method === 'POST') {
-                if (!activeWindow || activeWindow.isDestroyed()) {
-                    return sendJsonResponse(res, 503, {error: 'Active window not ready'});
-                }
-                activeWindow.webContents.send('studio:openGenerator');
-                return sendJsonResponse(res, 200, {
-                    status: 'success',
-                    message: 'AI generator modal opened'
-                });
-            }
-
             // 404 fallback
             return sendJsonResponse(res, 404, {error: 'Route not found'});
         } catch (e) {

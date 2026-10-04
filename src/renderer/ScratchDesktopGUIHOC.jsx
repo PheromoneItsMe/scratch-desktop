@@ -22,7 +22,6 @@ import {
 import ElectronStorageHelper from '../common/ElectronStorageHelper';
 
 import showPrivacyPolicy from './showPrivacyPolicy';
-import AICopilotSidebar from './AICopilotSidebar.jsx';
 import {generatePlatformerProject} from './levelGenerator.js';
 
 /**
@@ -38,11 +37,9 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                 'handleProjectTelemetryEvent',
                 'handleSetTitleFromSave',
                 'handleStorageInit',
-                'handleUpdateProjectTitle',
-                'toggleSidebar'
+                'handleUpdateProjectTitle'
             ]);
             this.state = {
-                isSidebarOpen: false,
                 projectTitle: ''
             };
             this.props.onLoadingStarted();
@@ -143,13 +140,6 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             };
             ipcRenderer.on('studio:getProject', this.handleStudioGetProject);
 
-            // Live Bridge IPC: Open co-pilot sidebar
-            this.handleStudioOpenGenerator = () => {
-                console.log('[Scratch AI Studio] Received studio:openGenerator IPC!');
-                this.setState({isSidebarOpen: true});
-            };
-            ipcRenderer.on('studio:openGenerator', this.handleStudioOpenGenerator);
-
             // In-app Level Generator event
             this.handleStudioLevelGenerated = event => {
                 const spec = event.detail || {};
@@ -175,15 +165,10 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             ipcRenderer.removeListener('studio:addSprite', this.handleStudioAddSprite);
             ipcRenderer.removeListener('studio:getState', this.handleStudioGetState);
             ipcRenderer.removeListener('studio:getProject', this.handleStudioGetProject);
-            ipcRenderer.removeListener('studio:openGenerator', this.handleStudioOpenGenerator);
             window.removeEventListener('studio:level-generated', this.handleStudioLevelGenerated);
         }
         handleClickAbout () {
             ipcRenderer.send('open-about-window');
-        }
-        toggleSidebar () {
-            console.log('[Scratch AI Studio] toggleSidebar called');
-            this.setState(prevState => ({isSidebarOpen: !prevState.isSidebarOpen}));
         }
         handleProjectTelemetryEvent (event, metadata) {
             ipcRenderer.send(event, metadata);
@@ -201,71 +186,33 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             const childProps = omit(this.props, Object.keys(ScratchDesktopGUIComponent.propTypes));
 
             return (
-                <React.Fragment>
-                    <WrappedComponent
-                        canEditTitle
-                        canModifyCloudData={false}
-                        canSave={false}
-                        onClickAbout={[
-                            {
-                                title: '⚡ ИИ Ко-пилот',
-                                onClick: () => this.toggleSidebar()
-                            },
-                            {
-                                title: 'About',
-                                onClick: () => this.handleClickAbout()
-                            },
-                            {
-                                title: 'Privacy Policy',
-                                onClick: () => showPrivacyPolicy()
-                            },
-                            {
-                                title: 'Data Settings',
-                                onClick: () => this.props.onTelemetrySettingsClicked()
-                            }
-                        ]}
-                        onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
-                        onShowPrivacyPolicy={showPrivacyPolicy}
-                        onStorageInit={this.handleStorageInit}
-                        onUpdateProjectTitle={this.handleUpdateProjectTitle}
-                        platform="DESKTOP"
+                <WrappedComponent
+                    canEditTitle
+                    canModifyCloudData={false}
+                    canSave={false}
+                    onClickAbout={[
+                        {
+                            title: 'About',
+                            onClick: () => this.handleClickAbout()
+                        },
+                        {
+                            title: 'Privacy Policy',
+                            onClick: () => showPrivacyPolicy()
+                        },
+                        {
+                            title: 'Data Settings',
+                            onClick: () => this.props.onTelemetrySettingsClicked()
+                        }
+                    ]}
+                    onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
+                    onShowPrivacyPolicy={showPrivacyPolicy}
+                    onStorageInit={this.handleStorageInit}
+                    onUpdateProjectTitle={this.handleUpdateProjectTitle}
+                    platform="DESKTOP"
 
-                        // allow passed-in props to override any of the above
-                        {...childProps}
-                    />
-
-                    {/* Sleek Floating Launcher Button in Header */}
-                    <div style={{position: 'fixed', top: '6px', right: '175px', zIndex: 9999}}>
-                        <button
-                            type="button"
-                            onClick={this.toggleSidebar}
-                            title="Открыть ИИ Ко-пилот сцены"
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                                color: '#ffffff',
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
-                                borderRadius: '6px',
-                                padding: '6px 14px',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 10px rgba(79, 70, 229, 0.5)'
-                            }}
-                        >
-                            <span>⚡</span> ИИ Ко-пилот
-                        </button>
-                    </div>
-
-                    {/* Non-blocking Collapsible Right Sidebar */}
-                    <AICopilotSidebar
-                        isOpen={this.state.isSidebarOpen}
-                        onToggle={this.toggleSidebar}
-                        vm={this.props.vm}
-                    />
-                </React.Fragment>
+                    // allow passed-in props to override any of the above
+                    {...childProps}
+                />
             );
         }
     }
