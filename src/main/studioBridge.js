@@ -159,6 +159,20 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
                 return;
             }
 
+            // Capture live screenshot of the window
+            if (pathname === '/api/screenshot' && req.method === 'GET') {
+                if (!activeWindow || activeWindow.isDestroyed()) {
+                    return sendJsonResponse(res, 503, {error: 'Active window not ready'});
+                }
+                const image = await activeWindow.webContents.capturePage();
+                const pngBuffer = image.toPNG();
+                res.writeHead(200, {
+                    'Content-Type': 'image/png',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                return res.end(pngBuffer);
+            }
+
             // Load project into live VM
             if (pathname === '/api/load-project' && req.method === 'POST') {
                 if (!activeWindow || activeWindow.isDestroyed()) {
@@ -184,6 +198,18 @@ export const initStudioBridge = (browserWindow, port = 8765) => {
                 return sendJsonResponse(res, 200, {
                     status: 'success',
                     message: 'Sprite addition dispatched to live runtime'
+                });
+            }
+
+            // Open AI generator modal in GUI
+            if (pathname === '/api/open-generator' && req.method === 'POST') {
+                if (!activeWindow || activeWindow.isDestroyed()) {
+                    return sendJsonResponse(res, 503, {error: 'Active window not ready'});
+                }
+                activeWindow.webContents.send('studio:openGenerator');
+                return sendJsonResponse(res, 200, {
+                    status: 'success',
+                    message: 'AI generator modal opened'
                 });
             }
 

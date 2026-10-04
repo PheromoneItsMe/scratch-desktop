@@ -42,6 +42,30 @@ def load_project(project_data):
     except Exception as e:
         return {"error": str(e)}
 
+def capture_screenshot(output_path: str):
+    try:
+        req = urllib.request.Request(f"{BASE_URL}/api/screenshot")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = resp.read()
+            with open(output_path, "wb") as f:
+                f.write(data)
+            return {"status": "ok", "saved_to": output_path, "bytes": len(data)}
+    except Exception as e:
+        return {"error": str(e)}
+
+def open_generator():
+    try:
+        req = urllib.request.Request(
+            f"{BASE_URL}/api/open-generator",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     status = check_health()
     print("Bridge status:", json.dumps(status, indent=2, ensure_ascii=False))

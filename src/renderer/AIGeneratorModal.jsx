@@ -1,6 +1,5 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import './AIGeneratorModal.css';
 
 class AIGeneratorModal extends React.Component {
     constructor (props) {
@@ -11,8 +10,8 @@ class AIGeneratorModal extends React.Component {
             process.env.GEMINI_API_KEY : storedKey;
 
         this.state = {
-            prompt: 'Горная долина с парящими зелеными платформами и золотыми монетами',
-            biome: 'hills',
+            prompt: 'Горный каньон с летающими платформами и золотыми монетами',
+            biome: 'canyon',
             difficulty: 'normal',
             coinsCount: 3,
             isLoading: false,
@@ -32,106 +31,12 @@ class AIGeneratorModal extends React.Component {
         }
     }
 
-    buildProjectFromSpec (spec) {
-        // High quality platformer baseline generator
-        const backdropSvg = spec.backdropSvg || `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360">
-            <defs>
-                <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#1e1b4b"/>
-                    <stop offset="100%" stop-color="#312e81"/>
-                </linearGradient>
-            </defs>
-            <rect width="480" height="360" fill="url(#sky)"/>
-        </svg>`;
-
-        // Project JSON schema with Level, Player, Platforms, Coins, Goal
-        return {
-            targets: [
-                {
-                    isStage: true,
-                    name: "Stage",
-                    variables: {
-                        "score_var": ["Счёт", 0],
-                        "level_var": ["Уровень", 1]
-                    },
-                    lists: {},
-                    broadcasts: {},
-                    customState: {},
-                    blocks: {
-                        "when_flag": {
-                            opcode: "event_whenflagclicked",
-                            next: "reset_score",
-                            parent: null,
-                            inputs: {},
-                            fields: {},
-                            shadow: false,
-                            topLevel: true,
-                            x: 50,
-                            y: 50
-                        },
-                        "reset_score": {
-                            opcode: "data_setvariableto",
-                            next: null,
-                            parent: "when_flag",
-                            inputs: {
-                                VALUE: [1, [10, "0"]]
-                            },
-                            fields: {
-                                VARIABLE: ["Счёт", "score_var"]
-                            },
-                            shadow: false,
-                            topLevel: false
-                        }
-                    },
-                    comments: {},
-                    currentCostume: 0,
-                    costumes: [
-                        {
-                            name: "Background",
-                            bitmapResolution: 1,
-                            dataFormat: "svg",
-                            assetId: "backdrop_asset",
-                            md5ext: "backdrop_asset.svg"
-                        }
-                    ],
-                    sounds: [],
-                    volume: 100,
-                    layerOrder: 0
-                }
-            ],
-            monitors: [
-                {
-                    id: "score_var",
-                    mode: "default",
-                    opcode: "data_variable",
-                    params: { VARIABLE: "Счёт" },
-                    spriteName: null,
-                    value: 0,
-                    width: 0,
-                    height: 0,
-                    x: 10,
-                    y: 10,
-                    visible: true,
-                    sliderMin: 0,
-                    sliderMax: 100,
-                    isDiscrete: true
-                }
-            ],
-            extensions: [],
-            meta: {
-                semver: "3.0.0",
-                vm: "0.2.0",
-                agent: "Scratch AI Studio (Pheromone)"
-            }
-        };
-    }
-
     async handleGenerate () {
         const {prompt, biome, difficulty, apiKey} = this.state;
         this.setState({isLoading: true, statusMessage: 'Подготовка параметров генерации...'});
 
         try {
-            let spec = { biome, difficulty };
+            let spec = { biome, difficulty, prompt };
 
             if (apiKey) {
                 this.setState({statusMessage: 'Связь с Gemini 2.0 Flash...'});
@@ -154,20 +59,17 @@ class AIGeneratorModal extends React.Component {
                 }
             }
 
-            this.setState({statusMessage: 'Построение физики и спрайтов Scratch...'});
+            this.setState({statusMessage: 'Построение физики и спрайтов...'});
 
-            // Load directly into Scratch VM
             if (this.props.vm) {
-                // If local project template is available or procedural builder
                 this.setState({statusMessage: 'Внедрение проекта на сцену...'});
-                // We signal the VM or main bridge
                 window.dispatchEvent(new CustomEvent('studio:level-generated', {detail: spec}));
             }
 
             this.setState({isLoading: false, statusMessage: 'Уровень успешно сгенерирован!'});
             setTimeout(() => {
                 this.props.onClose();
-            }, 800);
+            }, 900);
         } catch (err) {
             console.error('Generation error:', err);
             this.setState({isLoading: false, statusMessage: `Ошибка: ${err.message}`});
@@ -175,26 +77,106 @@ class AIGeneratorModal extends React.Component {
     }
 
     render () {
+        console.log('[Scratch AI Studio] AIGeneratorModal render, isOpen =', this.props.isOpen);
         if (!this.props.isOpen) return null;
 
         const {prompt, biome, difficulty, coinsCount, isLoading, statusMessage, apiKey, showSettings} = this.state;
 
+        const backdropStyle = {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(10px)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        };
+
+        const windowStyle = {
+            width: '620px',
+            maxWidth: '92vw',
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: '16px',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.08)',
+            color: '#f8fafc',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+        };
+
+        const headerStyle = {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '18px 24px',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            borderBottom: '1px solid #334155'
+        };
+
+        const bodyStyle = {
+            padding: '22px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '18px',
+            maxHeight: '75vh',
+            overflowY: 'auto'
+        };
+
+        const inputStyle = {
+            width: '100%',
+            boxSizing: 'border-box',
+            backgroundColor: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            color: '#f8fafc',
+            fontSize: '0.95rem',
+            fontFamily: 'inherit'
+        };
+
+        const buttonStyle = {
+            padding: '14px 20px',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            border: 'none',
+            borderRadius: '10px',
+            color: '#ffffff',
+            fontSize: '1.05rem',
+            fontWeight: 700,
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            boxShadow: '0 4px 18px rgba(99, 102, 241, 0.4)',
+            opacity: isLoading ? 0.7 : 1
+        };
+
         return (
-            <div className="ai-generator-backdrop" onClick={this.props.onClose}>
-                <div className="ai-generator-window" onClick={e => e.stopPropagation()}>
-                    <div className="ai-header">
-                        <div className="ai-header-title">
+            <div style={backdropStyle} onClick={this.props.onClose}>
+                <div style={windowStyle} onClick={e => e.stopPropagation()}>
+                    <div style={headerStyle}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.15rem', fontWeight: 700}}>
                             <span>✨ Scratch AI Studio</span>
-                            <span className="ai-badge">Gemini 2.0</span>
+                            <span style={{fontSize: '0.75rem', background: '#4f46e5', padding: '3px 8px', borderRadius: '12px'}}>Gemini 2.0</span>
                         </div>
-                        <button className="ai-close-btn" onClick={this.props.onClose}>&times;</button>
+                        <button
+                            type="button"
+                            onClick={this.props.onClose}
+                            style={{background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.6rem', cursor: 'pointer', lineHeight: 1}}
+                        >
+                            &times;
+                        </button>
                     </div>
 
-                    <div className="ai-body">
+                    <div style={bodyStyle}>
                         <div>
-                            <div className="ai-field-label">Промпт уровня (Описание мира)</div>
+                            <div style={{fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase'}}>
+                                Промпт уровня (Описание мира)
+                            </div>
                             <textarea
-                                className="ai-textarea"
+                                style={{...inputStyle, minHeight: '75px', resize: 'vertical'}}
                                 value={prompt}
                                 onChange={e => this.setState({prompt: e.target.value})}
                                 placeholder="Опишите желаемый уровень..."
@@ -202,11 +184,13 @@ class AIGeneratorModal extends React.Component {
                             />
                         </div>
 
-                        <div className="ai-grid-row">
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                             <div>
-                                <div className="ai-field-label">Биом / Стиль</div>
+                                <div style={{fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase'}}>
+                                    Биом / Стиль
+                                </div>
                                 <select
-                                    className="ai-select"
+                                    style={inputStyle}
                                     value={biome}
                                     onChange={e => this.setState({biome: e.target.value})}
                                 >
@@ -219,9 +203,11 @@ class AIGeneratorModal extends React.Component {
                             </div>
 
                             <div>
-                                <div className="ai-field-label">Монеты</div>
+                                <div style={{fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase'}}>
+                                    Монеты
+                                </div>
                                 <select
-                                    className="ai-select"
+                                    style={inputStyle}
                                     value={coinsCount}
                                     onChange={e => this.setState({coinsCount: Number(e.target.value)})}
                                 >
@@ -233,41 +219,41 @@ class AIGeneratorModal extends React.Component {
                         </div>
 
                         <div>
-                            <div className="ai-field-label">Сложность прыжков</div>
-                            <div className="ai-difficulty-group">
-                                <button
-                                    type="button"
-                                    className={`ai-diff-btn ${difficulty === 'easy' ? 'active' : ''}`}
-                                    onClick={() => this.setState({difficulty: 'easy'})}
-                                >
-                                    🟢 Легкий
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`ai-diff-btn ${difficulty === 'normal' ? 'active' : ''}`}
-                                    onClick={() => this.setState({difficulty: 'normal'})}
-                                >
-                                    🟡 Обычный
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`ai-diff-btn ${difficulty === 'hard' ? 'active' : ''}`}
-                                    onClick={() => this.setState({difficulty: 'hard'})}
-                                >
-                                    🔴 Хардкор
-                                </button>
+                            <div style={{fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase'}}>
+                                Сложность прыжков
+                            </div>
+                            <div style={{display: 'flex', gap: '8px'}}>
+                                {['easy', 'normal', 'hard'].map(d => (
+                                    <button
+                                        key={d}
+                                        type="button"
+                                        onClick={() => this.setState({difficulty: d})}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px 8px',
+                                            backgroundColor: difficulty === d ? '#4f46e5' : '#0f172a',
+                                            border: `1px solid ${difficulty === d ? '#6366f1' : '#334155'}`,
+                                            borderRadius: '8px',
+                                            color: difficulty === d ? '#fff' : '#94a3b8',
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {d === 'easy' ? '🟢 Легкий' : d === 'normal' ? '🟡 Обычный' : '🔴 Хардкор'}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
                         {statusMessage && (
-                            <div className="ai-status-box">
-                                <span>⚡</span> {statusMessage}
+                            <div style={{padding: '10px 14px', background: 'rgba(99,102,241,0.15)', border: '1px solid #4f46e5', borderRadius: '8px', color: '#c7d2fe', fontSize: '0.9rem'}}>
+                                ⚡ {statusMessage}
                             </div>
                         )}
 
                         <button
                             type="button"
-                            className="ai-action-btn"
+                            style={buttonStyle}
                             disabled={isLoading}
                             onClick={this.handleGenerate}
                         >
@@ -277,19 +263,18 @@ class AIGeneratorModal extends React.Component {
                         <div>
                             <button
                                 type="button"
-                                className="ai-settings-toggle"
                                 onClick={() => this.setState({showSettings: !showSettings})}
+                                style={{background: 'none', border: 'none', color: '#64748b', fontSize: '0.8rem', cursor: 'pointer'}}
                             >
                                 {showSettings ? '▲ Скрыть настройки API' : '⚙️ Настройки API ключа'}
                             </button>
 
                             {showSettings && (
-                                <div className="ai-settings-panel">
-                                    <div className="ai-field-label">Gemini API Key (Google AI Studio)</div>
+                                <div style={{marginTop: '8px', padding: '12px', background: '#0f172a', border: '1px dashed #334155', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                                    <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>Gemini API Key (Google AI Studio)</div>
                                     <input
                                         type="password"
-                                        className="ai-textarea"
-                                        style={{minHeight: 'auto', padding: '8px 10px'}}
+                                        style={inputStyle}
                                         value={apiKey}
                                         onChange={e => this.saveApiKey(e.target.value)}
                                         placeholder="Вставьте бесплатный ключ..."

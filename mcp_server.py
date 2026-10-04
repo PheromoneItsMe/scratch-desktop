@@ -59,7 +59,18 @@ def studio_add_sprite(sprite_json: str) -> Dict[str, Any]:
         parsed = json.loads(sprite_json) if isinstance(sprite_json, str) else sprite_json
     except Exception as e:
         return {"error": f"Invalid sprite JSON: {e}"}
-    return _request("/api/add-sprite", method="POST", data={"sprite": parsed})
+@mcp.tool()
+def studio_capture_screenshot(output_path: str) -> Dict[str, Any]:
+    """Capture a pixel-perfect PNG screenshot of the running Scratch AI Studio desktop window."""
+    try:
+        req = urllib.request.Request(f"{BRIDGE_URL}/api/screenshot")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = resp.read()
+            with open(output_path, "wb") as f:
+                f.write(data)
+            return {"status": "ok", "saved_to": output_path, "bytes": len(data)}
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     mcp.run()

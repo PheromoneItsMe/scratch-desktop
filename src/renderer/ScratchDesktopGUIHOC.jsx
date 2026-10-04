@@ -141,6 +141,13 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                 }
             };
             ipcRenderer.on('studio:getProject', this.handleStudioGetProject);
+
+            // Live Bridge IPC: Open generator modal
+            this.handleStudioOpenGenerator = () => {
+                console.log('[Scratch AI Studio] Received studio:openGenerator IPC!');
+                this.setState({isGeneratorOpen: true});
+            };
+            ipcRenderer.on('studio:openGenerator', this.handleStudioOpenGenerator);
         }
         componentWillUnmount () {
             ipcRenderer.removeListener('setTitleFromSave', this.handleSetTitleFromSave);
@@ -148,11 +155,13 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             ipcRenderer.removeListener('studio:addSprite', this.handleStudioAddSprite);
             ipcRenderer.removeListener('studio:getState', this.handleStudioGetState);
             ipcRenderer.removeListener('studio:getProject', this.handleStudioGetProject);
+            ipcRenderer.removeListener('studio:openGenerator', this.handleStudioOpenGenerator);
         }
         handleClickAbout () {
             ipcRenderer.send('open-about-window');
         }
         toggleGenerator () {
+            console.log('[Scratch AI Studio] toggleGenerator clicked, toggling modal');
             this.setState(prevState => ({isGeneratorOpen: !prevState.isGeneratorOpen}));
         }
         handleProjectTelemetryEvent (event, metadata) {
@@ -208,9 +217,22 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                     <div style={{position: 'fixed', top: '6px', right: '175px', zIndex: 9999}}>
                         <button
                             type="button"
-                            className="ai-studio-launcher-btn"
                             onClick={this.toggleGenerator}
                             title="Открыть ИИ Генератор уровней"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                                color: '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                borderRadius: '6px',
+                                padding: '6px 14px',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 10px rgba(79, 70, 229, 0.5)'
+                            }}
                         >
                             <span>⚡</span> ИИ Генератор
                         </button>

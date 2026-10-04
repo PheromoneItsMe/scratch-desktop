@@ -83,7 +83,7 @@ const displayPermissionDeniedWarning = (browserWindow, permissionType) => {
  * @returns {string} - an absolute URL as a string
  */
 const makeFullUrl = (url, search = null) => {
-    const baseUrl = (isDevelopment ?
+    const baseUrl = (isDevelopment && !process.env.USE_LOCAL_FILES ?
         `http://localhost:${PORT}/` :
         `file://${path.join(__dirname, '../renderer')}/`
     );
@@ -302,6 +302,9 @@ const createMainWindow = () => {
         title: `${packageJson.productName} ${packageJson.version}` // something like "Scratch 3.14"
     });
     const webContents = window.webContents;
+    webContents.on('console-message', (ev, level, message) => {
+        log.info(`[Renderer] ${message}`);
+    });
 
     webContents.session.on('will-download', (willDownloadEvent, downloadItem) => {
         const isProjectSave = getIsProjectSave(downloadItem);
